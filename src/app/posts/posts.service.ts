@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { Post } from './post.model';
 import { map } from 'rxjs/operators';
+import { Router } from '@angular/router';
 
 // Create only one instance in an entire app
 @Injectable({providedIn: 'root'})
@@ -10,7 +11,7 @@ export class PostsService {
   private posts: Post[] = [];
   private postsUpdated = new Subject<Post[]>();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private router: Router) {}
 
   getPosts() {
     // Spread operator to create a new array to keep people from accessing private posts array directly
@@ -25,7 +26,8 @@ export class PostsService {
           return {
             title: post.title,
             content: post.content,
-            id: post._id
+            id: post._id,
+            imagePath: post.imagePath
           }
         });
       }))
@@ -39,13 +41,68 @@ export class PostsService {
     return this.postsUpdated.asObservable();
   }
 
-  addPost(title: string, content: string) {
-    const post: Post = {id: null, title: title, content: content};
-    this.http.post<{message: string}>('http://localhost:3000/api/posts', post)
+  getPost(id: string) {
+    // Return observable
+    return this.http.get<{
+      _id: string,
+      title: string,
+      content: string,
+      imagePath: string
+    }>('http://localhost:3000/api/posts/' + id);
+  }
+
+  addPost(title: string, content: string, image: File) {
+    // const post: Post = { id: null, title: title, content: content };
+    const postData = new FormData();
+    postData.append('title', title);
+    postData.append('content', content);
+    postData.append('image', image, title);
+    this.http.post<{ message: string, post: Post }>('http://localhost:3000/api/posts', postData)
       .subscribe((responseData) => {
-        console.log(responseData.message);
+        // console.log(responseData.message);
+        const post: Post = {
+          id: responseData.post.id,
+          title: title,
+          content: content,
+          imagePath: responseData.post.imagePath
+        };
         this.posts.push(post);
         this.postsUpdated.next([...this.posts]);
+        this.router.navigate(['/']);
+      });
+  }
+
+  updatePost(id: string, title: string, content: string, image: File | string) {
+    let postData: Post | FormData;
+    if (typeof(image) === 'object') {
+      postData = new FormData();
+      postData.append('id', id);
+      postData.append('title', title);
+      postData.append('content', content);
+      postData.append('image', image, title);
+    } else {
+      postData = {
+        id: id,
+        title: title,
+        content: content,
+        imagePath: image
+      };
+    }
+
+    this.http.put('http://localhost:3000/api/posts/' + id, postData)
+      .subscribe(response => {
+        const updatedPosts = [...this.posts];
+        const oldPostIndex = updatedPosts.findIndex(p => p.id === id);
+        const post: Post = {
+          id: id,
+          title: title,
+          content: content,
+          imagePath: ''
+        }
+        updatedPosts[oldPostIndex] = post;
+        this.posts = updatedPosts;
+        this.postsUpdated.next([...this.posts]);
+        this.router.navigate(['/']);
       });
   }
 
