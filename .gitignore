@@ -2,6 +2,8 @@
 /backend/app.js
 /backend/images
 /backend/routes/user.js
+nodemon.json
+/src/environments
 
 # compiled output
 /dist
