@@ -4,6 +4,7 @@
 /backend/routes/user.js
 nodemon.json
 /src/environments
+/backend/Archive.zip
 
 # compiled output
 /dist
